@@ -1,0 +1,7 @@
+.env
+bin/
+tmp/
+backups/
+certs/
+*.sql.gz
+.DS_Store
