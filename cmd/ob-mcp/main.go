@@ -187,6 +187,51 @@ func registerTools(s *server.MCPServer, d *db.DB, e embed.Provider, c classify.P
 	)
 
 	s.AddTool(
+		mcp.NewTool("list_thoughts",
+			mcp.WithDescription("List recent thoughts with optional filters by type, topic, person, or recency window."),
+			mcp.WithNumber("limit",
+				mcp.Description("Max rows to return (default 10).")),
+			mcp.WithString("type",
+				mcp.Description("Filter by thought_type (e.g. idea, fact, task, question, decision, observation).")),
+			mcp.WithString("topic",
+				mcp.Description("Filter by a single topic tag; matches rows whose topics array contains it.")),
+			mcp.WithString("person",
+				mcp.Description("Filter by a single person; matches rows whose people array contains them.")),
+			mcp.WithNumber("days",
+				mcp.Description("Only include rows from the last N days (0 = no limit).")),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			limit := req.GetInt("limit", 10)
+			rows, err := d.List(ctx,
+				limit,
+				req.GetString("type", ""),
+				req.GetString("topic", ""),
+				req.GetString("person", ""),
+				req.GetInt("days", 0),
+			)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			b, _ := json.MarshalIndent(rows, "", "  ")
+			return mcp.NewToolResultText(string(b)), nil
+		},
+	)
+
+	s.AddTool(
+		mcp.NewTool("thought_stats",
+			mcp.WithDescription("Summarize the captured corpus: total rows, date range, and top types, topics, and people."),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			stats, err := d.Stats(ctx)
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			b, _ := json.MarshalIndent(stats, "", "  ")
+			return mcp.NewToolResultText(string(b)), nil
+		},
+	)
+
+	s.AddTool(
 		mcp.NewTool("search_thoughts",
 			mcp.WithDescription("Search captured thoughts by meaning."),
 			mcp.WithString("query", mcp.Required(),
