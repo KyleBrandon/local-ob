@@ -84,7 +84,7 @@ func main() {
 	if *httpAddr != "" {
 		mcpHandler := server.NewStreamableHTTPServer(s)
 		mux := http.NewServeMux()
-		mux.Handle("/mcp", mcpHandler)
+		mux.Handle("/ob-mcp", mcpHandler)
 		mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 			pingCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 			defer cancel()
@@ -98,13 +98,13 @@ func main() {
 
 		certFile, keyFile := os.Getenv("TLS_CERT_FILE"), os.Getenv("TLS_KEY_FILE")
 		if certFile != "" && keyFile != "" {
-			log.Printf("HTTPS MCP on %s (path /mcp, health /health)", *httpAddr)
+			log.Printf("HTTPS MCP on %s (path /ob-mcp, health /health)", *httpAddr)
 			if err := http.ListenAndServeTLS(*httpAddr, certFile, keyFile, mux); err != nil {
 				log.Fatal(err)
 			}
 			return
 		}
-		log.Printf("HTTP MCP on %s (path /mcp, health /health)", *httpAddr)
+		log.Printf("HTTP MCP on %s (path /ob-mcp, health /health)", *httpAddr)
 		if err := http.ListenAndServe(*httpAddr, mux); err != nil {
 			log.Fatal(err)
 		}
