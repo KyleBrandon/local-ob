@@ -1,6 +1,8 @@
 # local-ob
 
-Self-hosted personal knowledge brain. Go MCP server + Postgres (pgvector) + pluggable embedding and classification providers. Ships with Ollama (local, default) and OpenAI (remote, opt-in). Postgres and the MCP server run in Docker; Ollama runs native on the host for Metal/CUDA acceleration and is reached from containers via `host.docker.internal`.
+Self-hosted personal knowledge brain implementation of [Open Brain](https://github.com/NateBJones-Projects/OB1).
+
+Go MCP server + Postgres (pgvector) + pluggable embedding and classification providers. Ships with Ollama (local, default) and OpenAI (remote, opt-in). Postgres and the MCP server run in Docker; Ollama runs native on the host for Metal/CUDA acceleration and is reached from containers via `host.docker.internal`.
 
 ## What you need
 
