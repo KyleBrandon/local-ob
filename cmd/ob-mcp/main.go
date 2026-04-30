@@ -187,6 +187,72 @@ func registerTools(s *server.MCPServer, d *db.DB, e embed.Provider, c classify.P
 	)
 
 	s.AddTool(
+		mcp.NewTool("update_thought",
+			mcp.WithDescription("Update an existing thought's content. Re-embeds and re-classifies automatically."),
+			mcp.WithString("id", mcp.Required(),
+				mcp.Description("UUID of the thought to update.")),
+			mcp.WithString("content", mcp.Required(),
+				mcp.Description("New content; replaces the existing thought.")),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			id, err := req.RequireString("id")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			content, err := req.RequireString("content")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
+			var (
+				emb    []float32
+				md     classify.Metadata
+				wg     sync.WaitGroup
+				embErr error
+			)
+			wg.Add(2)
+			go func() { defer wg.Done(); emb, embErr = e.Embed(ctx, content) }()
+			go func() { defer wg.Done(); md, _ = c.Classify(ctx, content) }()
+			wg.Wait()
+
+			if embErr != nil {
+				return mcp.NewToolResultError("embed failed: " + embErr.Error()), nil
+			}
+			found, err := d.Update(ctx, id, content, md.ThoughtType,
+				e.Name(), e.Model(), md.Topics, md.People, emb)
+			if err != nil {
+				return mcp.NewToolResultError("update failed: " + err.Error()), nil
+			}
+			if !found {
+				return mcp.NewToolResultError("no thought with id " + id), nil
+			}
+			return mcp.NewToolResultText(fmt.Sprintf("Updated %s (%s)", id, md.ThoughtType)), nil
+		},
+	)
+
+	s.AddTool(
+		mcp.NewTool("delete_thought",
+			mcp.WithDescription("Permanently delete a thought by ID."),
+			mcp.WithString("id", mcp.Required(),
+				mcp.Description("UUID of the thought to delete.")),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			id, err := req.RequireString("id")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			found, err := d.Delete(ctx, id)
+			if err != nil {
+				return mcp.NewToolResultError("delete failed: " + err.Error()), nil
+			}
+			if !found {
+				return mcp.NewToolResultError("no thought with id " + id), nil
+			}
+			return mcp.NewToolResultText("Deleted " + id), nil
+		},
+	)
+
+	s.AddTool(
 		mcp.NewTool("list_thoughts",
 			mcp.WithDescription("List recent thoughts with optional filters by type, topic, person, or recency window."),
 			mcp.WithNumber("limit",

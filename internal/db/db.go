@@ -65,6 +65,45 @@ func (d *DB) Insert(ctx context.Context, content, thoughtType, source,
 	return id, err
 }
 
+// Update replaces a thought's content, embedding, classification, and provider
+// stamps. The updated_at column is refreshed by the thoughts_touch trigger.
+// Returns found=false if no row matches id.
+func (d *DB) Update(ctx context.Context, id, content, thoughtType,
+	provider, model string, topics, people []string, emb []float32,
+) (bool, error) {
+	if topics == nil {
+		topics = []string{}
+	}
+	if people == nil {
+		people = []string{}
+	}
+	tag, err := d.Pool.Exec(ctx, `
+        UPDATE thoughts
+           SET content        = $2,
+               embedding      = $3,
+               thought_type   = NULLIF($4,''),
+               topics         = $5,
+               people         = $6,
+               embed_provider = $7,
+               embed_model    = $8
+         WHERE id = $1`,
+		id, content, pgvector.NewVector(emb), thoughtType, topics, people, provider, model,
+	)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// Delete hard-deletes a thought by id. Returns found=false if no row matches.
+func (d *DB) Delete(ctx context.Context, id string) (bool, error) {
+	tag, err := d.Pool.Exec(ctx, `DELETE FROM thoughts WHERE id = $1`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 func (d *DB) Search(ctx context.Context, qEmb []float32, limit int,
 	filterType string, filterTopics []string,
 ) ([]Thought, error) {
